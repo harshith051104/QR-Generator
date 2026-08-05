@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Verified - {{ cert.name }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="brand-header">
+      <img src="/static/logo.svg" alt="Company Logo" class="brand-logo">
+    </div>
+
+    <div class="card">
+      <div class="status-badge status-verified">
+        <span class="badge-icon">✅</span> Certificate Verified
+      </div>
+
+      <table class="info-table">
+        <tr class="info-row">
+          <td class="info-label">Recipient Name</td>
+          <td class="info-value">{{ cert.name }}</td>
+        </tr>
+        <tr class="info-row">
+          <td class="info-label">Course / Program</td>
+          <td class="info-value">{{ cert.course }}</td>
+        </tr>
+        <tr class="info-row">
+          <td class="info-label">Certificate No.</td>
+          <td class="info-value highlight-value">{{ cert.certificate_number }}</td>
+        </tr>
+        <tr class="info-row">
+          <td class="info-label">Issue Date</td>
+          <td class="info-value">{{ cert.issue_date }}</td>
+        </tr>
+        <tr class="info-row">
+          <td class="info-label">Issued By</td>
+          <td class="info-value">{{ cert.company or company_name }}</td>
+        </tr>
+        <tr class="info-row">
+          <td class="info-label">Status</td>
+          <td class="info-value" style="color: var(--success); font-weight: 700;">Genuine & Valid</td>
+        </tr>
+      </table>
+
+      <div class="timestamp-box">
+        Verification scan timestamp:<br>
+        <span class="timestamp-time">{{ verified_at }}</span>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center;">
+        <a href="/" style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 600;">&larr; Verify another certificate</a>
+      </div>
+    </div>
+
+    <div class="footer-credits">
+      Official Verification Record &bull; {{ company_name }}
+    </div>
+  </div>
+</body>
+</html>

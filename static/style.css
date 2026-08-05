@@ -1,0 +1,214 @@
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-gradient-from: #f8fafc;
+  --bg-gradient-to: #e2e8f0;
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, var(--bg-gradient-from), var(--bg-gradient-to));
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.container {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.brand-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.brand-logo {
+  height: 48px;
+  width: auto;
+  margin-bottom: 8px;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 32px 28px;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+
+/* Badge Styles */
+.status-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.5px;
+  margin-bottom: 24px;
+}
+
+.status-verified {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border: 1.5px solid var(--success-border);
+}
+
+.status-invalid {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+  border: 1.5px solid var(--danger-border);
+}
+
+.badge-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* Info Grid / Table */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+}
+
+.info-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  padding: 12px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 40%;
+}
+
+.info-value {
+  padding: 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: right;
+  word-break: break-word;
+}
+
+.highlight-value {
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Verification Timestamp Footer */
+.timestamp-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.timestamp-time {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Search Form */
+.search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 14px 20px;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-primary:active {
+  transform: scale(0.99);
+}
+
+.footer-credits {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Responsiveness */
+@media (max-width: 480px) {
+  .card {
+    padding: 24px 18px;
+  }
+  .info-label {
+    font-size: 0.8rem;
+  }
+  .info-value {
+    font-size: 0.925rem;
+  }
+}

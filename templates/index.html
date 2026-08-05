@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Verification Portal</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="brand-header">
+      <img src="/static/logo.svg" alt="Company Logo" class="brand-logo">
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 8px; text-align: center;">Verify Certificate Authenticity</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; margin-bottom: 20px;">
+        Enter a Certificate Number or Verification Token to check its authenticity.
+      </p>
+
+      {% if error %}
+      <div class="status-badge status-invalid" style="margin-bottom: 16px; font-size: 0.95rem; padding: 10px 14px;">
+        <span class="badge-icon">⚠️</span> {{ error }}
+      </div>
+      {% endif %}
+
+      <form action="/verify" method="POST" class="search-box">
+        <input 
+          type="text" 
+          name="query" 
+          class="input-field" 
+          placeholder="e.g. AI2026-001 or UUID token" 
+          required 
+          autofocus
+        >
+        <button type="submit" class="btn-primary">Verify Certificate</button>
+      </form>
+    </div>
+
+    <div class="footer-credits">
+      Protected by QR Verification System &bull; {{ company_name }}
+    </div>
+  </div>
+</body>
+</html>

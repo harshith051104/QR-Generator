@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Not Verified</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="brand-header">
+      <img src="/static/logo.svg" alt="Company Logo" class="brand-logo">
+    </div>
+
+    <div class="card">
+      <div class="status-badge status-invalid">
+        <span class="badge-icon">❌</span> Certificate Not Verified
+      </div>
+
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 24px;">
+        This certificate or token could not be validated against our official records. It may be invalid, modified, or expired.
+      </p>
+
+      <form action="/verify" method="POST" class="search-box">
+        <input 
+          type="text" 
+          name="query" 
+          class="input-field" 
+          placeholder="Try another Certificate No. or Token" 
+          required
+        >
+        <button type="submit" class="btn-primary">Search Again</button>
+      </form>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="/" style="color: var(--primary); text-decoration: none; font-size: 0.875rem; font-weight: 600;">&larr; Back to verification portal</a>
+      </div>
+    </div>
+
+    <div class="footer-credits">
+      Security Audit Notice &bull; {{ company_name }}
+    </div>
+  </div>
+</body>
+</html>
