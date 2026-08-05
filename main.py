@@ -21,20 +21,26 @@ logger = logging.getLogger("main")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Tech Academy")
 REFRESH_MINUTES = int(os.getenv("CACHE_REFRESH_MINUTES", "5"))
 
+# Absolute directory paths for Vercel Serverless compatibility
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Load Google Sheet into memory cache
     logger.info("Initializing Certificate Verification Application...")
     try:
         certificate_cache.load_cache()
-        certificate_cache.start_auto_refresh(interval_minutes=REFRESH_MINUTES)
+        # Only start background auto-refresh loop if not running in Vercel serverless environment
+        if not os.getenv("VERCEL"):
+            certificate_cache.start_auto_refresh(interval_minutes=REFRESH_MINUTES)
     except Exception as e:
         logger.warning(
             f"Could not load Google Sheet cache on startup: {e}. "
-            "Please ensure credentials/service_account.json and GOOGLE_SHEET_ID are properly set."
+            "Please check GOOGLE_SHEET_ID and GOOGLE_CREDENTIALS_JSON in Vercel environment settings."
         )
     yield
-    # Shutdown
     logger.info("Shutting down Certificate Verification Application...")
 
 app = FastAPI(
@@ -44,12 +50,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+# Mount static directory safely
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+def ensure_cache_loaded():
+    """Ensure cache is loaded on serverless cold starts if not already populated."""
+    if certificate_cache.last_updated is None:
+        try:
+            certificate_cache.load_cache()
+        except Exception as e:
+            logger.error(f"Lazy cache load failed: {e}")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Render search portal landing page."""
+    ensure_cache_loaded()
     return templates.TemplateResponse(
         "index.html",
         {"request": request, "company_name": COMPANY_NAME}
@@ -69,6 +87,7 @@ async def verify_certificate(request: Request, query: str, response: Response):
     Returns 200 OK + verified.html if genuine.
     Returns 404 Not Found + invalid.html if missing or revoked.
     """
+    ensure_cache_loaded()
     cert = certificate_cache.search(query)
 
     if cert and cert.get("status", "").lower() in ["verified", "valid"]:
