@@ -64,6 +64,13 @@ def ensure_cache_loaded():
         except Exception as e:
             logger.error(f"Lazy cache load failed: {e}")
 
+@app.middleware("http")
+async def vercel_path_rewrite_middleware(request: Request, call_next):
+    matched_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
+    if matched_path and request.scope["path"] in ["/api/index.py", "/api/index", "/api"]:
+        request.scope["path"] = matched_path.split("?")[0]
+    return await call_next(request)
+
 @app.get('/favicon.ico', include_in_schema=False)
 @app.get('/favicon.png', include_in_schema=False)
 async def favicon():
@@ -85,7 +92,6 @@ async def serve_static(file_path: str):
     return Response(status_code=status.HTTP_404_NOT_FOUND)
 
 @app.get("/", response_class=HTMLResponse)
-@app.get("/api/index.py", response_class=HTMLResponse)
 async def home(request: Request):
     """Render search portal landing page."""
     ensure_cache_loaded()
@@ -96,14 +102,12 @@ async def home(request: Request):
     )
 
 @app.post("/verify")
-@app.post("/api/index.py")
 async def verify_post(query: str = Form(...)):
     """Handle form submission from search box."""
     clean_query = query.strip()
     return RedirectResponse(url=f"/verify/{clean_query}", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/verify/{query}", response_class=HTMLResponse)
-@app.get("/api/index.py/verify/{query}", response_class=HTMLResponse)
 async def verify_certificate(request: Request, query: str, response: Response):
     """
     Verification endpoint.
