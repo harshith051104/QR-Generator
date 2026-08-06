@@ -132,12 +132,26 @@ async def favicon():
 
 @app.get("/static/{file_path:path}", include_in_schema=False)
 async def serve_static(file_path: str):
-    file_full_path = os.path.join(STATIC_DIR, file_path)
-    if not os.path.exists(file_full_path):
-        file_full_path = os.path.join(os.getcwd(), "static", file_path)
-    if os.path.exists(file_full_path):
-        mime = "text/css" if file_path.endswith(".css") else ("image/svg+xml" if file_path.endswith(".svg") else None)
-        return FileResponse(file_full_path, media_type=mime)
+    mime_map = {
+        ".css":  "text/css",
+        ".js":   "application/javascript",
+        ".svg":  "image/svg+xml",
+        ".png":  "image/png",
+        ".jpg":  "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".ico":  "image/x-icon",
+        ".woff": "font/woff",
+        ".woff2":"font/woff2",
+    }
+    ext = os.path.splitext(file_path)[1].lower()
+    mime = mime_map.get(ext, "application/octet-stream")
+
+    for base in (STATIC_DIR, os.path.join(os.getcwd(), "static")):
+        full = os.path.join(base, file_path)
+        if os.path.exists(full):
+            return FileResponse(full, media_type=mime)
+
+    logger.warning(f"Static file not found: {file_path} (looked in {STATIC_DIR})")
     return Response(status_code=status.HTTP_404_NOT_FOUND)
 
 @app.get("/", response_class=HTMLResponse)
