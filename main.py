@@ -66,9 +66,9 @@ def ensure_cache_loaded():
 
 @app.middleware("http")
 async def vercel_path_rewrite_middleware(request: Request, call_next):
-    matched_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
-    if matched_path and request.scope["path"] in ["/api/index.py", "/api/index", "/api"]:
-        request.scope["path"] = matched_path.split("?")[0]
+    original_uri = request.headers.get("x-forwarded-uri") or request.headers.get("x-original-url")
+    if original_uri:
+        request.scope["path"] = original_uri.split("?")[0]
     return await call_next(request)
 
 @app.get('/favicon.ico', include_in_schema=False)
