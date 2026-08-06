@@ -71,29 +71,39 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
     raw_path = request.scope.get("path", "")
     # Only rewrite when Vercel has routed the request to the /api/index.py function
     if raw_path.startswith("/api/index"):
-        # Recover the original request path using a priority-ordered header chain.
-        #
-        # vercel.json uses "source": "/:path*" which is a NAMED parameter.
-        # Vercel then sets x-now-route-matches = "path=<encoded-value>" reliably.
-        #
-        # Priority:
-        #   1. x-now-route-matches  – named capture from vercel.json ":path*"
-        #   2. x-forwarded-uri      – Vercel edge header (full original URI)
-        #   3. x-original-uri       – fallback on some Vercel regions
-        #   4. raw-path ASGI scope  – byte-string of the raw path
+        # PRIMARY: Read __vpath injected by vercel.json destination URL.
+        # vercel.json rewrites "/:path*" → "/api/index.py?__vpath=:path*"
+        # so the original path arrives in the query string — no headers needed.
         clean_path = None
 
-        route_matches = request.headers.get("x-now-route-matches", "")
-        if route_matches:
-            # Format: "path=<percent-encoded-value>&next=..."
-            for part in route_matches.split("&"):
-                if part.startswith("path="):
-                    encoded = part[len("path="):].split("?")[0]
-                    decoded = urllib.parse.unquote(encoded)
-                    if decoded:
-                        clean_path = decoded if decoded.startswith("/") else "/" + decoded
-                    break
+        qs = request.scope.get("query_string", b"").decode("utf-8", errors="replace")
+        params = urllib.parse.parse_qsl(qs, keep_blank_values=True)
+        remaining = []
+        for key, val in params:
+            if key == "__vpath" and clean_path is None:
+                decoded = urllib.parse.unquote(val)
+                if decoded:
+                    clean_path = decoded if decoded.startswith("/") else "/" + decoded
+            else:
+                remaining.append((key, val))
 
+        # Strip __vpath so route handlers never see it
+        if clean_path is not None:
+            request.scope["query_string"] = urllib.parse.urlencode(remaining).encode("utf-8")
+
+        # FALLBACK: x-now-route-matches (may be sent in some Vercel regions)
+        if not clean_path:
+            route_matches = request.headers.get("x-now-route-matches", "")
+            if route_matches:
+                for part in route_matches.split("&"):
+                    if part.startswith("path="):
+                        encoded = part[len("path="):].split("?")[0]
+                        decoded = urllib.parse.unquote(encoded)
+                        if decoded:
+                            clean_path = decoded if decoded.startswith("/") else "/" + decoded
+                        break
+
+        # FALLBACK: x-forwarded-uri / x-original-uri headers
         if not clean_path:
             for header in ("x-forwarded-uri", "x-original-uri"):
                 val = request.headers.get(header, "")
@@ -101,20 +111,10 @@ async def vercel_path_rewrite_middleware(request: Request, call_next):
                     clean_path = urllib.parse.unquote(val).split("?")[0] or "/"
                     break
 
-        if not clean_path:
-            raw_bytes = request.scope.get("raw_path", b"")
-            if raw_bytes:
-                candidate = urllib.parse.unquote(
-                    raw_bytes.decode("utf-8", errors="replace")
-                ).split("?")[0]
-                if candidate not in ("/api/index.py", "/api/index", "/api", ""):
-                    clean_path = candidate
-
         if not clean_path or clean_path in ("/api/index.py", "/api/index", "/api", ""):
             clean_path = "/"
 
-        logger.info(f"[Vercel] Rewrote path: {raw_path!r} → {clean_path!r} "
-                    f"(route_matches={request.headers.get('x-now-route-matches', 'none')!r})")
+        logger.info(f"[Vercel] Rewrote path: {raw_path!r} → {clean_path!r}")
         request.scope["path"] = clean_path
         request.scope["root_path"] = ""
 

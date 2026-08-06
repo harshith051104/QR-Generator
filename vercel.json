@@ -6,12 +6,8 @@
   },
   "rewrites": [
     {
-      "source": "/static/:file*",
-      "destination": "/api/index.py"
-    },
-    {
       "source": "/:path*",
-      "destination": "/api/index.py"
+      "destination": "/api/index.py?__vpath=:path*"
     }
   ]
 }
