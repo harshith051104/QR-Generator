@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Form, Response, status
@@ -105,11 +106,22 @@ async def home(request: Request):
         context={"company_name": COMPANY_NAME}
     )
 
-@app.post("/verify")
-async def verify_post(query: str = Form(...)):
+@app.api_route("/verify", methods=["GET", "POST"])
+async def verify_post(request: Request, query: Optional[str] = Form(None)):
     """Handle form submission from search box."""
-    clean_query = query.strip()
-    return RedirectResponse(url=f"/verify/{clean_query}", status_code=status.HTTP_303_SEE_OTHER)
+    target_query = (query or "").strip()
+    if not target_query:
+        target_query = request.query_params.get("query", "").strip()
+    if not target_query:
+        try:
+            form = await request.form()
+            target_query = str(form.get("query", "")).strip()
+        except Exception:
+            pass
+
+    if target_query:
+        return RedirectResponse(url=f"/verify/{target_query}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/verify/{query}", response_class=HTMLResponse)
 async def verify_certificate(request: Request, query: str, response: Response):
