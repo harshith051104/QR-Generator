@@ -51,11 +51,22 @@ class CertificateCache:
         return self.by_number.get(cert_number.strip().lower())
 
     def search(self, query: str):
-        """Search by token first, then by certificate number."""
+        """Search by token first, then by certificate number (with flexible space/hyphen matching)."""
         if not query:
             return None
         q = query.strip().lower()
-        return self.by_token.get(q) or self.by_number.get(q)
+        res = self.by_token.get(q) or self.by_number.get(q)
+        if res:
+            return res
+
+        q_clean = q.replace("-", "").replace(" ", "")
+        for k, v in self.by_number.items():
+            if k.replace("-", "").replace(" ", "") == q_clean:
+                return v
+        for k, v in self.by_token.items():
+            if k.replace("-", "").replace(" ", "") == q_clean:
+                return v
+        return None
 
     async def _auto_refresh_loop(self, interval_minutes: int):
         while True:

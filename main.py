@@ -103,6 +103,7 @@ async def verify_post(query: str = Form(...)):
     return RedirectResponse(url=f"/verify/{clean_query}", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/verify/{query}", response_class=HTMLResponse)
+@app.get("/api/index.py/verify/{query}", response_class=HTMLResponse)
 async def verify_certificate(request: Request, query: str, response: Response):
     """
     Verification endpoint.
@@ -113,7 +114,10 @@ async def verify_certificate(request: Request, query: str, response: Response):
     ensure_cache_loaded()
     cert = certificate_cache.search(query)
 
-    if cert and cert.get("status", "").lower() in ["verified", "valid"]:
+    cert_status = str(cert.get("status") or "").strip().lower() if cert else ""
+    is_valid = cert and (cert_status not in ["invalid", "revoked", "expired", "fake", "denied"])
+
+    if cert and is_valid:
         now_str = datetime.now().strftime("%d %b %Y %H:%M:%S") + " IST"
         return templates.TemplateResponse(
             request=request,
