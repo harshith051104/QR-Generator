@@ -106,7 +106,8 @@ async def home(request: Request):
         context={"company_name": COMPANY_NAME}
     )
 
-@app.api_route("/verify", methods=["GET", "POST"])
+@app.get("/verify")
+@app.post("/verify")
 async def verify_post(request: Request, query: Optional[str] = Form(None)):
     """Handle form submission from search box."""
     target_query = (query or "").strip()
