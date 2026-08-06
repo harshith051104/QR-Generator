@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Dashboard · {{ company_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0f1e;
+      --surface: #111827;
+      --surface2: #1a2234;
+      --border: #1f2d45;
+      --primary: #6366f1;
+      --primary-glow: rgba(99,102,241,0.25);
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      background: linear-gradient(135deg, #1a1040 0%, #0d1b36 50%, #0a0f1e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .brand-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .brand-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 18px;
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: #fff;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 24px var(--primary-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+    /* ── MAIN LAYOUT ── */
+    .main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── STATS CARDS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--primary), #8b5cf6);
+    }
+
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; }
+    .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .stat-value.green { color: var(--accent); }
+    .stat-value.purple { color: var(--primary); }
+    .stat-value.amber { color: var(--warning); }
+
+    .stat-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+
+    .toolbar-title { font-size: 1rem; font-weight: 600; color: var(--text); }
+    .toolbar-title span { color: var(--text-muted); font-weight: 400; font-size: 0.875rem; }
+
+    .search-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 14px 9px 38px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      width: 280px;
+      outline: none;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .search-input:focus { border-color: var(--primary); }
+    .search-wrap { position: relative; }
+    .search-icon {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 15px; pointer-events: none;
+    }
+
+    /* ── TABLE ── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+
+    thead { background: var(--surface2); }
+    th {
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+
+    td {
+      padding: 14px 16px;
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    .cert-number {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .name-cell { font-weight: 600; }
+    .muted { color: var(--text-muted); font-size: 0.82rem; }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-verified { background: rgba(16,185,129,0.15); color: var(--accent); border: 1px solid rgba(16,185,129,0.3); }
+    .badge-invalid  { background: rgba(239,68,68,0.15);  color: var(--danger);  border: 1px solid rgba(239,68,68,0.3); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* QR thumb */
+    .qr-thumb {
+      width: 52px; height: 52px;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      object-fit: contain;
+      display: block;
+    }
+    .qr-thumb:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--primary-glow); }
+
+    .no-token { color: var(--text-muted); font-size: 0.8rem; font-style: italic; }
+
+    /* Copy button */
+    .copy-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 13px; padding: 3px 6px;
+      border-radius: 4px; transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .copy-btn:hover { background: var(--border); color: var(--text); }
+
+    /* Verify link */
+    .verify-link {
+      color: var(--primary); text-decoration: none; font-size: 0.8rem; font-weight: 500;
+    }
+    .verify-link:hover { text-decoration: underline; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 64px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── QR MODAL ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      max-width: 380px; width: 90%;
+      box-shadow: 0 0 60px rgba(0,0,0,0.7);
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .modal img { width: 260px; height: 260px; border-radius: 12px; background: #fff; margin-bottom: 16px; }
+    .modal-name { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .modal-cert { font-size: 0.8rem; color: var(--primary); font-family: monospace; margin-bottom: 16px; }
+    .modal-url { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; margin-bottom: 20px; }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      width: 32px; height: 32px; border-radius: 50%;
+      cursor: pointer; font-size: 16px; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: var(--border); color: var(--text); }
+    .modal { position: relative; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: var(--shadow);
+      z-index: 2000;
+      transform: translateY(80px); opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-left: 3px solid var(--accent); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+
+    /* Spinner */
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .topbar { padding: 0 16px; }
+      .main { padding: 16px; }
+      .search-input { width: 100%; }
+      .toolbar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">🎓</div>
+    <div>
+      <div class="brand-title">Certificate Dashboard</div>
+      <div class="brand-sub">{{ company_name }} · Last synced: {{ last_updated }}</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a href="{{ sheet_url }}" target="_blank" class="btn btn-ghost">
+      📊 Open Sheet
+    </a>
+    <a href="/" class="btn btn-ghost">🔍 Verify Portal</a>
+    <button class="btn btn-primary" id="syncBtn" onclick="syncNow()">
+      <span class="spinner" id="syncSpinner"></span>
+      <span id="syncLabel">🔄 Sync &amp; Generate</span>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Certificates</div>
+      <div class="stat-value purple">{{ total }}</div>
+      <div class="stat-sub">from Google Sheet</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Verified</div>
+      <div class="stat-value green" id="verifiedCount">—</div>
+      <div class="stat-sub">active &amp; valid</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Invalid / Revoked</div>
+      <div class="stat-value amber" id="invalidCount">—</div>
+      <div class="stat-sub">flagged records</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">With QR Token</div>
+      <div class="stat-value purple" id="tokenCount">—</div>
+      <div class="stat-sub">QR-ready entries</div>
+    </div>
+  </div>
+
+  <!-- Table toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-title">
+      All Certificates <span>· {{ total }} records</span>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text" id="searchInput" placeholder="Search name, course, cert no…" oninput="filterTable()">
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-wrap">
+      <table id="certTable">
+        <thead>
+          <tr>
+            <th>QR Code</th>
+            <th>Cert Number</th>
+            <th>Name</th>
+            <th>Course</th>
+            <th>Issue Date</th>
+            <th>Company</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cert in certs %}
+          <tr data-search="{{ (cert.name ~ ' ' ~ cert.course ~ ' ' ~ cert.certificate_number ~ ' ' ~ cert.company)|lower }}">
+            <td>
+              {% if cert.verification_token %}
+              <img
+                class="qr-thumb"
+                src="/qr/{{ cert.verification_token }}"
+                alt="QR for {{ cert.name }}"
+                loading="lazy"
+                onclick="openModal('{{ cert.verification_token }}','{{ cert.name }}','{{ cert.certificate_number }}')"
+                title="Click to enlarge"
+              >
+              {% else %}
+              <span class="no-token">No token</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="cert-number">{{ cert.certificate_number or '—' }}</span>
+            </td>
+            <td class="name-cell">{{ cert.name or '—' }}</td>
+            <td>
+              {{ cert.course or '—' }}
+            </td>
+            <td class="muted">{{ cert.issue_date or '—' }}</td>
+            <td class="muted">{{ cert.company or '—' }}</td>
+            <td>
+              {% set s = (cert.status or 'verified')|lower %}
+              {% if s in ['invalid','revoked','expired','fake','denied'] %}
+              <span class="badge badge-invalid"><span class="badge-dot"></span>{{ cert.status }}</span>
+              {% else %}
+              <span class="badge badge-verified"><span class="badge-dot"></span>{{ cert.status or 'Verified' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if cert.verification_token %}
+              <a class="verify-link" href="/verify/{{ cert.verification_token }}" target="_blank">View ↗</a>
+              <button class="copy-btn" title="Copy token" onclick="copyText('{{ cert.verification_token }}')">📋</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>No certificates found. Click <strong>Sync &amp; Generate</strong> to load data from Google Sheets.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <img id="modalQR" src="" alt="QR Code">
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-cert" id="modalCert"></div>
+    <div class="modal-url" id="modalUrl"></div>
+    <a class="btn btn-primary" id="modalDownload" download>⬇ Download QR</a>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const BASE_URL = window.location.origin;
+
+  // ── Count stats ──
+  (function countStats() {
+    const rows = document.querySelectorAll('#certTable tbody tr[data-search]');
+    let verified = 0, invalid = 0, withToken = 0;
+    rows.forEach(r => {
+      const badge = r.querySelector('.badge');
+      if (badge) {
+        if (badge.classList.contains('badge-verified')) verified++;
+        else invalid++;
+      }
+      if (r.querySelector('.qr-thumb')) withToken++;
+    });
+    document.getElementById('verifiedCount').textContent = verified;
+    document.getElementById('invalidCount').textContent = invalid;
+    document.getElementById('tokenCount').textContent = withToken;
+  })();
+
+  // ── Search filter ──
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('#certTable tbody tr[data-search]').forEach(r => {
+      r.style.display = r.dataset.search.includes(q) ? '' : 'none';
+    });
+  }
+
+  // ── Sync ──
+  async function syncNow() {
+    const btn = document.getElementById('syncBtn');
+    const spinner = document.getElementById('syncSpinner');
+    const label = document.getElementById('syncLabel');
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    label.textContent = 'Syncing…';
+
+    try {
+      const res = await fetch('/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast(`✅ Synced ${data.synced} certs, cached ${data.cached}`, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(`❌ ${data.message}`, 'error');
+      }
+    } catch (e) {
+      showToast('❌ Network error during sync', 'error');
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      label.textContent = '🔄 Sync & Generate';
+    }
+  }
+
+  // ── QR Modal ──
+  function openModal(token, name, certNum) {
+    const url = `${BASE_URL}/verify/${token}`;
+    document.getElementById('modalQR').src = `/qr/${token}`;
+    document.getElementById('modalName').textContent = name || 'Certificate';
+    document.getElementById('modalCert').textContent = certNum || token;
+    document.getElementById('modalUrl').textContent = url;
+    const dl = document.getElementById('modalDownload');
+    dl.href = `/qr/${token}`;
+    dl.download = `qr_${certNum || token}.png`;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById('modalOverlay')) {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // ── Copy ──
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('📋 Copied!', 'success'));
+  }
+
+  // ── Toast ──
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => { t.className = 'toast'; }, 3500);
+  }
+</script>
+</body>
+</html>

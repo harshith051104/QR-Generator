@@ -255,6 +255,64 @@ async def refresh_cache():
             "message": str(e)
         }
 
+@app.get("/qr/{token}", include_in_schema=False)
+async def qr_image(token: str):
+    """Serve a QR code PNG for a given verification token — generated in memory."""
+    from backend.qr_generator import generate_qr_bytes, get_base_url
+    verify_url = f"{get_base_url()}/verify/{token}"
+    try:
+        png_bytes = generate_qr_bytes(verify_url)
+        return Response(content=png_bytes, media_type="image/png")
+    except Exception as e:
+        logger.error(f"QR generation failed for token {token!r}: {e}")
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """Admin dashboard — view all certificates with QR codes."""
+    ensure_cache_loaded()
+
+    # Deduplicate: by_token and by_number share the same dict objects
+    seen_ids: set = set()
+    certs = []
+    for cert in list(certificate_cache.by_token.values()) + list(certificate_cache.by_number.values()):
+        uid = cert.get("verification_token") or cert.get("certificate_number")
+        if uid and uid not in seen_ids:
+            seen_ids.add(uid)
+            certs.append(cert)
+
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "")
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit" if sheet_id else "#"
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "certs": certs,
+            "company_name": COMPANY_NAME,
+            "sheet_url": sheet_url,
+            "last_updated": certificate_cache.last_updated.strftime("%d %b %Y %H:%M:%S") if certificate_cache.last_updated else "Never",
+            "total": len(certs),
+        }
+    )
+
+@app.post("/sync")
+async def sync_certificates():
+    """Auto-fill missing tokens/QR URLs in Google Sheet, then reload cache."""
+    try:
+        from backend.google_service import auto_fill_missing_tokens_and_urls
+        certs = auto_fill_missing_tokens_and_urls()
+        count = certificate_cache.load_cache()
+        return {
+            "status": "success",
+            "synced": len(certs),
+            "cached": count,
+            "last_updated": certificate_cache.last_updated.isoformat() if certificate_cache.last_updated else None
+        }
+    except Exception as e:
+        logger.error(f"Sync failed: {e}")
+        return {"status": "error", "message": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

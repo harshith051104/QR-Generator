@@ -1,3 +1,4 @@
+import io
 import os
 import logging
 import qrcode
@@ -7,6 +8,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger("certificate_verifier")
+
+
+def generate_qr_bytes(url: str) -> bytes:
+    """Generate a QR code PNG entirely in memory and return raw bytes.
+    Used by the /qr/{token} endpoint — no filesystem needed (Vercel-safe).
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#1E293B", back_color="#FFFFFF")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf.getvalue()
 
 def get_base_url():
     return os.getenv("BASE_URL", "http://localhost:8000").strip().rstrip("/")
