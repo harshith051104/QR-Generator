@@ -6,7 +6,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 logger = logging.getLogger("certificate_verifier")
 
@@ -29,29 +30,48 @@ def get_gspread_client():
     cred_json_str = config["credentials_json"]
     cred_path = config["credentials_path"]
 
+    errors = []
+
     # 1. Try reading from GOOGLE_CREDENTIALS_JSON env var (Vercel / Render)
     if cred_json_str:
         try:
-            # Handle potential escaping of newlines or quotes in env vars
-            cleaned_json = cred_json_str.replace('\\n', '\n')
+            cleaned_json = cred_json_str.strip().strip("'\"")
+            cleaned_json = cleaned_json.replace('\\n', '\n')
             info = json.loads(cleaned_json)
+            if isinstance(info, str):
+                info = json.loads(info)
+            if isinstance(info, dict) and "private_key" in info:
+                info["private_key"] = info["private_key"].replace('\\n', '\n')
             creds = Credentials.from_service_account_info(info, scopes=SCOPES)
             return gspread.authorize(creds)
         except Exception as e:
-            logger.error(f"Error loading credentials from GOOGLE_CREDENTIALS_JSON env var: {e}")
+            err_msg = f"GOOGLE_CREDENTIALS_JSON env var error: {e}"
+            logger.error(err_msg)
+            errors.append(err_msg)
 
     # 2. Try reading from file path (Local dev)
-    # Convert relative path to absolute relative to project root
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    abs_cred_path = cred_path if os.path.isabs(cred_path) else os.path.join(base_dir, cred_path)
+    abs_cred_path = os.path.normpath(cred_path if os.path.isabs(cred_path) else os.path.join(base_dir, cred_path))
 
     if os.path.exists(abs_cred_path):
-        creds = Credentials.from_service_account_file(abs_cred_path, scopes=SCOPES)
-        return gspread.authorize(creds)
+        try:
+            with open(abs_cred_path, "r", encoding="utf-8") as f:
+                info = json.load(f)
+            if isinstance(info, dict) and "private_key" in info:
+                info["private_key"] = info["private_key"].replace('\\n', '\n')
+            creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+            return gspread.authorize(creds)
+        except Exception as e:
+            err_msg = f"Credentials file error at '{abs_cred_path}': {e}"
+            logger.error(err_msg)
+            errors.append(err_msg)
+    else:
+        errors.append(f"Credentials file not found at '{abs_cred_path}'")
 
+    details = " | ".join(errors)
     raise FileNotFoundError(
-        f"Google Service Account credentials not found. "
-        f"Please set GOOGLE_CREDENTIALS_JSON environment variable in Vercel settings or place service_account.json at '{cred_path}'."
+        f"Google Service Account credentials not found or invalid. Details: [{details}]. "
+        f"Please set GOOGLE_CREDENTIALS_JSON in Vercel settings or place service_account.json at '{cred_path}'."
     )
 
 def get_worksheet():
