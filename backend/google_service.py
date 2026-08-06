@@ -149,59 +149,93 @@ def fetch_all_certificates() -> list:
 def auto_fill_missing_tokens_and_urls() -> list:
     """
     Check all rows in Google Sheet.
-    If 'Verification Token' or 'QR URL' is missing:
-    - Generate a secure UUID4 token
-    - Construct QR URL using BASE_URL
-    - Update Google Sheet in batch
-    Returns updated list of certificate dicts.
+    For any row with missing fields, auto-fill:
+      - Verification Token  → secure UUID4
+      - QR URL              → BASE_URL/verify/<token>
+      - Issue Date          → today's date (DD Mon YYYY)
+      - Company             → COMPANY_NAME env var (default: ABC)
+    Creates the columns in the sheet header if they don't exist yet.
+    Returns the refreshed list of certificate dicts.
     """
+    from datetime import date as _date
+
     config = get_config()
     base_url = config["base_url"]
-    worksheet = get_worksheet()
+    company_name = os.getenv("COMPANY_NAME", "ABC").strip()
+    today_str = _date.today().strftime("%d %b %Y")   # e.g. "06 Aug 2026"
 
+    worksheet = get_worksheet()
     headers = worksheet.row_values(1)
-    
-    def find_col_idx(header_names, default_name):
+
+    def find_col_idx(header_names):
         for name in header_names:
             for idx, h in enumerate(headers, start=1):
                 if h.strip().lower() == name.lower():
                     return idx
         return None
 
-    token_col = find_col_idx(["Verification Token", "Token", "UUID"], "Verification Token")
-    qr_col = find_col_idx(["QR URL", "QR Code URL", "QR_URL"], "QR URL")
+    token_col    = find_col_idx(["Verification Token", "Token", "UUID"])
+    qr_col       = find_col_idx(["QR URL", "QR Code URL", "QR_URL"])
+    date_col     = find_col_idx(["Issue Date", "Date", "Issued Date"])
+    company_col  = find_col_idx(["Company", "Issued By", "Organization"])
 
-    updates_to_header = False
+    # ── Add missing columns to header row ──
+    header_changed = False
     if not token_col:
         headers.append("Verification Token")
         token_col = len(headers)
-        updates_to_header = True
+        header_changed = True
     if not qr_col:
         headers.append("QR URL")
         qr_col = len(headers)
-        updates_to_header = True
+        header_changed = True
+    if not date_col:
+        headers.append("Issue Date")
+        date_col = len(headers)
+        header_changed = True
+    if not company_col:
+        headers.append("Company")
+        company_col = len(headers)
+        header_changed = True
 
-    if updates_to_header:
+    if header_changed:
         worksheet.update("1:1", [headers])
+        logger.info(f"Sheet header updated: {headers}")
 
     rows = worksheet.get_all_records()
     cell_updates = []
 
     for row_idx, row in enumerate(rows, start=2):
-        token = str(row.get("Verification Token") or row.get("Token") or "").strip()
-        qr_url = str(row.get("QR URL") or "").strip()
-        
-        needs_token_update = not token
-        if needs_token_update:
+        # Skip completely empty rows (no name, no cert number)
+        name    = str(row.get("Name") or row.get("Recipient Name") or row.get("Student Name") or "").strip()
+        cert_no = str(row.get("Certificate Number") or row.get("Certificate ID") or "").strip()
+        if not name and not cert_no:
+            continue
+
+        # ── Verification Token ──
+        token = str(row.get("Verification Token") or row.get("Token") or row.get("UUID") or "").strip()
+        if not token:
             token = str(uuid.uuid4())
             cell_updates.append(gspread.Cell(row_idx, token_col, token))
 
-        expected_qr_url = f"{base_url}/verify/{token}"
-        if not qr_url or qr_url != expected_qr_url:
-            cell_updates.append(gspread.Cell(row_idx, qr_col, expected_qr_url))
+        # ── QR URL ──
+        expected_qr = f"{base_url}/verify/{token}"
+        existing_qr = str(row.get("QR URL") or row.get("QR Code URL") or "").strip()
+        if not existing_qr or existing_qr != expected_qr:
+            cell_updates.append(gspread.Cell(row_idx, qr_col, expected_qr))
+
+        # ── Issue Date ──
+        existing_date = str(row.get("Issue Date") or row.get("Date") or row.get("Issued Date") or "").strip()
+        if not existing_date:
+            cell_updates.append(gspread.Cell(row_idx, date_col, today_str))
+
+        # ── Company ──
+        existing_company = str(row.get("Company") or row.get("Issued By") or row.get("Organization") or "").strip()
+        if not existing_company:
+            cell_updates.append(gspread.Cell(row_idx, company_col, company_name))
 
     if cell_updates:
-        logger.info(f"Updating {len(cell_updates)} cell(s) in Google Sheet...")
+        logger.info(f"Auto-filling {len(cell_updates)} cell(s) in Google Sheet…")
         worksheet.update_cells(cell_updates)
 
     return fetch_all_certificates()
