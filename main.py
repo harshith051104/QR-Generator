@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Form, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
@@ -68,12 +68,47 @@ def ensure_cache_loaded():
 @app.middleware("http")
 async def vercel_path_rewrite_middleware(request: Request, call_next):
     raw_path = request.scope.get("path", "")
-    if raw_path in ["/api/index.py", "/api/index", "/api"]:
-        uri = request.headers.get("x-forwarded-uri") or request.headers.get("x-original-url") or "/"
-        clean_path = uri.split("?")[0]
-        if clean_path in ["/api/index.py", "/api/index", "/api", ""]:
+    if raw_path.startswith("/api"):
+        # Vercel rewrites all traffic to /api/index.py; recover the original
+        # URL using the most-reliable header first, falling back down the chain.
+        #
+        # Priority:
+        #   1. x-now-route-matches  – contains "path=<original-path>" when
+        #      a rewrite rule matched (most accurate)
+        #   2. x-forwarded-uri      – set by Vercel edge, includes path+query
+        #   3. x-original-uri       – set on some Vercel regions
+        #   4. raw-path ASGI key    – byte-string of original path
+        clean_path = None
+
+        route_matches = request.headers.get("x-now-route-matches", "")
+        if route_matches:
+            # Format: "path=<encoded-path>&..."
+            for part in route_matches.split("&"):
+                if part.startswith("path="):
+                    clean_path = part[len("path="):].split("?")[0] or "/"
+                    if not clean_path.startswith("/"):
+                        clean_path = "/" + clean_path
+                    break
+
+        if not clean_path:
+            for header in ("x-forwarded-uri", "x-original-uri"):
+                val = request.headers.get(header, "")
+                if val:
+                    clean_path = val.split("?")[0] or "/"
+                    break
+
+        if not clean_path:
+            raw_bytes = request.scope.get("raw_path", b"")
+            if raw_bytes:
+                clean_path = raw_bytes.decode("utf-8", errors="replace").split("?")[0]
+
+        if not clean_path or clean_path in ("/api/index.py", "/api/index", "/api", ""):
             clean_path = "/"
+
         request.scope["path"] = clean_path
+        # Also fix root_path so Starlette routing works correctly
+        request.scope["root_path"] = ""
+
     return await call_next(request)
 
 @app.get('/favicon.ico', include_in_schema=False)
