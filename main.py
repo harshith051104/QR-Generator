@@ -68,9 +68,21 @@ def ensure_cache_loaded():
 @app.get('/favicon.png', include_in_schema=False)
 async def favicon():
     logo_path = os.path.join(STATIC_DIR, "logo.svg")
+    if not os.path.exists(logo_path):
+        logo_path = os.path.join(os.getcwd(), "static", "logo.svg")
     if os.path.exists(logo_path):
         return FileResponse(logo_path, media_type="image/svg+xml")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.get("/static/{file_path:path}", include_in_schema=False)
+async def serve_static(file_path: str):
+    file_full_path = os.path.join(STATIC_DIR, file_path)
+    if not os.path.exists(file_full_path):
+        file_full_path = os.path.join(os.getcwd(), "static", file_path)
+    if os.path.exists(file_full_path):
+        mime = "text/css" if file_path.endswith(".css") else ("image/svg+xml" if file_path.endswith(".svg") else None)
+        return FileResponse(file_full_path, media_type=mime)
+    return Response(status_code=status.HTTP_404_NOT_FOUND)
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/api/index.py", response_class=HTMLResponse)
