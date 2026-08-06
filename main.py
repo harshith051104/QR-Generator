@@ -96,6 +96,7 @@ async def home(request: Request):
     )
 
 @app.post("/verify")
+@app.post("/api/index.py")
 async def verify_post(query: str = Form(...)):
     """Handle form submission from search box."""
     clean_query = query.strip()
