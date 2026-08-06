@@ -36,10 +36,14 @@ def get_gspread_client():
     if cred_json_str:
         try:
             cleaned_json = cred_json_str.strip().strip("'\"")
-            cleaned_json = cleaned_json.replace('\\n', '\n')
-            info = json.loads(cleaned_json)
+            try:
+                info = json.loads(cleaned_json, strict=False)
+            except Exception:
+                fixed_json = cleaned_json.replace('\r\n', '\\n').replace('\n', '\\n')
+                info = json.loads(fixed_json, strict=False)
+
             if isinstance(info, str):
-                info = json.loads(info)
+                info = json.loads(info, strict=False)
             if isinstance(info, dict) and "private_key" in info:
                 info["private_key"] = info["private_key"].replace('\\n', '\n')
             creds = Credentials.from_service_account_info(info, scopes=SCOPES)

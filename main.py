@@ -78,8 +78,9 @@ async def home(request: Request):
     """Render search portal landing page."""
     ensure_cache_loaded()
     return templates.TemplateResponse(
-        "index.html",
-        {"request": request, "company_name": COMPANY_NAME}
+        request=request,
+        name="index.html",
+        context={"company_name": COMPANY_NAME}
     )
 
 @app.post("/verify")
@@ -102,9 +103,9 @@ async def verify_certificate(request: Request, query: str, response: Response):
     if cert and cert.get("status", "").lower() in ["verified", "valid"]:
         now_str = datetime.now().strftime("%d %b %Y %H:%M:%S") + " IST"
         return templates.TemplateResponse(
-            "verified.html",
-            {
-                "request": request,
+            request=request,
+            name="verified.html",
+            context={
                 "cert": cert,
                 "company_name": COMPANY_NAME,
                 "verified_at": now_str
@@ -115,9 +116,9 @@ async def verify_certificate(request: Request, query: str, response: Response):
     # Not found or revoked
     response.status_code = status.HTTP_404_NOT_FOUND
     return templates.TemplateResponse(
-        "invalid.html",
-        {
-            "request": request,
+        request=request,
+        name="invalid.html",
+        context={
             "company_name": COMPANY_NAME,
             "query": query
         },
