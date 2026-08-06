@@ -1,5 +1,6 @@
 import os
 import logging
+import urllib.parse
 from typing import Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -68,45 +69,53 @@ def ensure_cache_loaded():
 @app.middleware("http")
 async def vercel_path_rewrite_middleware(request: Request, call_next):
     raw_path = request.scope.get("path", "")
-    if raw_path.startswith("/api"):
-        # Vercel rewrites all traffic to /api/index.py; recover the original
-        # URL using the most-reliable header first, falling back down the chain.
+    # Only rewrite when Vercel has routed the request to the /api/index.py function
+    if raw_path.startswith("/api/index"):
+        # Recover the original request path using a priority-ordered header chain.
+        #
+        # vercel.json uses "source": "/:path*" which is a NAMED parameter.
+        # Vercel then sets x-now-route-matches = "path=<encoded-value>" reliably.
         #
         # Priority:
-        #   1. x-now-route-matches  – contains "path=<original-path>" when
-        #      a rewrite rule matched (most accurate)
-        #   2. x-forwarded-uri      – set by Vercel edge, includes path+query
-        #   3. x-original-uri       – set on some Vercel regions
-        #   4. raw-path ASGI key    – byte-string of original path
+        #   1. x-now-route-matches  – named capture from vercel.json ":path*"
+        #   2. x-forwarded-uri      – Vercel edge header (full original URI)
+        #   3. x-original-uri       – fallback on some Vercel regions
+        #   4. raw-path ASGI scope  – byte-string of the raw path
         clean_path = None
 
         route_matches = request.headers.get("x-now-route-matches", "")
         if route_matches:
-            # Format: "path=<encoded-path>&..."
+            # Format: "path=<percent-encoded-value>&next=..."
             for part in route_matches.split("&"):
                 if part.startswith("path="):
-                    clean_path = part[len("path="):].split("?")[0] or "/"
-                    if not clean_path.startswith("/"):
-                        clean_path = "/" + clean_path
+                    encoded = part[len("path="):].split("?")[0]
+                    decoded = urllib.parse.unquote(encoded)
+                    if decoded:
+                        clean_path = decoded if decoded.startswith("/") else "/" + decoded
                     break
 
         if not clean_path:
             for header in ("x-forwarded-uri", "x-original-uri"):
                 val = request.headers.get(header, "")
                 if val:
-                    clean_path = val.split("?")[0] or "/"
+                    clean_path = urllib.parse.unquote(val).split("?")[0] or "/"
                     break
 
         if not clean_path:
             raw_bytes = request.scope.get("raw_path", b"")
             if raw_bytes:
-                clean_path = raw_bytes.decode("utf-8", errors="replace").split("?")[0]
+                candidate = urllib.parse.unquote(
+                    raw_bytes.decode("utf-8", errors="replace")
+                ).split("?")[0]
+                if candidate not in ("/api/index.py", "/api/index", "/api", ""):
+                    clean_path = candidate
 
         if not clean_path or clean_path in ("/api/index.py", "/api/index", "/api", ""):
             clean_path = "/"
 
+        logger.info(f"[Vercel] Rewrote path: {raw_path!r} → {clean_path!r} "
+                    f"(route_matches={request.headers.get('x-now-route-matches', 'none')!r})")
         request.scope["path"] = clean_path
-        # Also fix root_path so Starlette routing works correctly
         request.scope["root_path"] = ""
 
     return await call_next(request)
@@ -140,6 +149,24 @@ async def home(request: Request):
         name="index.html",
         context={"company_name": COMPANY_NAME}
     )
+
+@app.post("/", response_class=HTMLResponse)
+async def home_post(request: Request, query: Optional[str] = Form(None)):
+    """Fallback POST handler for / in case Vercel path recovery defaults to root.
+    Processes the search form and redirects to /verify/<query>.
+    """
+    target_query = (query or "").strip()
+    if not target_query:
+        try:
+            form = await request.form()
+            target_query = str(form.get("query", "")).strip()
+        except Exception:
+            pass
+    if not target_query:
+        target_query = request.query_params.get("query", "").strip()
+    if target_query:
+        return RedirectResponse(url=f"/verify/{target_query}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/verify")
 @app.post("/verify")
